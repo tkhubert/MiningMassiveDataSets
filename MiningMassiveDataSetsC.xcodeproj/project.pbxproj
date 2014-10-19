@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8039800219F40ACA00D671A6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8039800119F40ACA00D671A6 /* main.cpp */; };
+		803D4C5919F40E38005BB1CC /* SimilarSentences.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 803D4C5719F40E38005BB1CC /* SimilarSentences.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,6 +26,8 @@
 /* Begin PBXFileReference section */
 		80397FFE19F40ACA00D671A6 /* MiningMassiveDataSetsC */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MiningMassiveDataSetsC; sourceTree = BUILT_PRODUCTS_DIR; };
 		8039800119F40ACA00D671A6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		803D4C5719F40E38005BB1CC /* SimilarSentences.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SimilarSentences.cpp; sourceTree = "<group>"; };
+		803D4C5819F40E38005BB1CC /* SimilarSentences.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SimilarSentences.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,6 +61,8 @@
 			isa = PBXGroup;
 			children = (
 				8039800119F40ACA00D671A6 /* main.cpp */,
+				803D4C5719F40E38005BB1CC /* SimilarSentences.cpp */,
+				803D4C5819F40E38005BB1CC /* SimilarSentences.h */,
 			);
 			path = MiningMassiveDataSetsC;
 			sourceTree = "<group>";
@@ -118,6 +123,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				803D4C5919F40E38005BB1CC /* SimilarSentences.cpp in Sources */,
 				8039800219F40ACA00D671A6 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -232,6 +238,7 @@
 				8039800719F40ACA00D671A6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
