@@ -16,11 +16,36 @@ namespace
     }
 }
 //
-SimilarSentences::SimilarSentences(string filename)
+string Sentence::toString() const
+{
+    stringstream ss;
+    ss << sentence << " " << count;
+    return ss.str();
+}
+//
+SimilarSentences::SimilarSentences(string _filename) : filename(_filename)
 {
     ifstream file(filename);
     
-    copy(istream_iterator<string>(file), istream_iterator<string>(), wholeData);
+    string line;
+    string sentence;
+    int    i;
+    
+    if (file.is_open())
+    {
+        while (getline(file, line))
+        {
+            stringstream ss, oss;
+            ss << line;
+            ss >> i;
+            oss << ss.rdbuf();
+
+            wholeData.push_back(oss.str());
+        }
+        file.close();
+    }
+    else
+        throw "Could not open file: " + filename;
 }
 //
 void SimilarSentences::findAndProcessDuplicates()
@@ -33,21 +58,75 @@ void SimilarSentences::findAndProcessDuplicates()
     for (vector<string>::const_iterator itr=wholeData.begin(); itr!=wholeData.end(); ++itr)
     {
         if (*itr==currentString)
-        {
             currentCount++;
-            continue;
+        else
+        {
+            noDupliData.push_back(Sentence(currentString, currentCount));
+            
+            currentCount  = 1;
+            currentString = *itr;
         }
-        
-        noDuplicatesData.push_back(Sentence(currentString, currentCount));
-        
-        currentCount  = 1;
-        currentString = *itr;
     }
+}
+//
+void SimilarSentences::writeToFileNoDupliData()
+{
+    ofstream file(filename+"noDupli.txt");
+    int i=0;
+    for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
+        file << i++ << " " <<itr->toString() << endl;
+    
+    file.close();
 }
 //
 void SimilarSentences::hashToLengthBuckets()
 {
-    sort(noDuplicatesData.begin(), noDuplicatesData.end(), lengthCompare);
+    sort(noDupliData.begin(), noDupliData.end(), lengthCompare);
     
+    int    currentIdx    = 0;
+    size_t currentLength = noDupliData[0].getLength();
     
+    SentenceBucket tmpBucket;
+    
+    for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
+    {
+        SentenceBucket& currentBucket = lengthBucket[currentIdx];
+        size_t thisLength = itr->getLength();
+        
+        if (thisLength==currentLength)
+            tmpBucket.push_back(*itr);
+        else
+        {
+            if (currentBucket.size()+tmpBucket.size()>1)
+            {
+                currentBucket.reserve(currentBucket.size()+tmpBucket.size());
+                copy(tmpBucket.begin(), tmpBucket.end(), currentBucket.end());
+            }
+            if (thisLength==currentLength+1)
+            {
+                SentenceBucket& nextBucket = lengthBucket[currentIdx+1];
+                nextBucket.reserve(tmpBucket.size());
+                copy(tmpBucket.begin(), tmpBucket.end(), nextBucket.end());
+            }
+            
+            tmpBucket.clear();
+            tmpBucket.push_back(*itr);
+            currentLength = thisLength;
+            currentIdx++;
+        }
+    }
+}
+//
+void SimilarSentences::writeToFileLengthBucket()
+{
+    ofstream file(filename+"LengthBucket.txt");
+    
+    for (vector<SentenceBucket>::const_iterator itr=lengthBucket.begin(); itr!=lengthBucket.end(); ++itr)
+    {
+        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
+            file << itr2->getLength() << " " << itr2->toString() << endl;
+        file <<endl;
+    }
+    
+    file.close();
 }

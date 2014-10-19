@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <vector>
 #include <algorithm>
 
@@ -25,27 +26,33 @@ public:
     string getSentence() const {return sentence;}
     int    getCount()    const {return count;}
     size_t getLength()   const {return sentence.length();}
+    string toString()    const;
     
     void   setCount(int newCount) {count = newCount;}
+    
     
 private:
     string sentence;
     int    count;
-    
-    
 };
+typedef vector<Sentence> SentenceBucket;
 //
 class SimilarSentences
 {
 public:
     SimilarSentences(string filename);
     
-private:
-    vector<string>   wholeData;
-    vector<Sentence> noDuplicatesData;
+    void writeToFileNoDupliData();
+    void writeToFileLengthBucket();
     
     void findAndProcessDuplicates();
     void hashToLengthBuckets();
+    
+private:
+    string                 filename;
+    vector<string>         wholeData;
+    SentenceBucket         noDupliData;
+    vector<SentenceBucket> lengthBucket;
     
 };
 

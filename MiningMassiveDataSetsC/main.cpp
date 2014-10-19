@@ -7,11 +7,19 @@
 //
 
 #include <iostream>
+#include "SimilarSentences.h"
 
 int main(int argc, const char * argv[])
 {
     // insert code here...
-    std::cout << "Hello, World!\n";
+    string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences500.txt";
+    
+    SimilarSentences simSent(filename);
+    simSent.findAndProcessDuplicates();
+    simSent.writeToFileNoDupliData();
+    simSent.hashToLengthBuckets();
+    simSent.writeToFileLengthBucket();
+    
     return 0;
 }
 
