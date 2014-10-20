@@ -86,8 +86,11 @@ void SimilarSentences::hashToLengthBuckets()
     int    currentIdx    = 0;
     size_t currentLength = noDupliData[0].getLength();
     
+    lengthBucket.resize(noDupliData.size());
+    
     SentenceBucket tmpBucket;
     
+    int count = 0;
     for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
     {
         SentenceBucket& currentBucket = lengthBucket[currentIdx];
@@ -99,22 +102,22 @@ void SimilarSentences::hashToLengthBuckets()
         {
             if (currentBucket.size()+tmpBucket.size()>1)
             {
-                currentBucket.reserve(currentBucket.size()+tmpBucket.size());
-                copy(tmpBucket.begin(), tmpBucket.end(), currentBucket.end());
+                currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
+                currentIdx++;
+                count++;
             }
             if (thisLength==currentLength+1)
             {
-                SentenceBucket& nextBucket = lengthBucket[currentIdx+1];
-                nextBucket.reserve(tmpBucket.size());
-                copy(tmpBucket.begin(), tmpBucket.end(), nextBucket.end());
+                SentenceBucket& nextBucket = lengthBucket[currentIdx];
+                nextBucket.insert(nextBucket.end(), tmpBucket.begin(), tmpBucket.end());
             }
             
             tmpBucket.clear();
             tmpBucket.push_back(*itr);
             currentLength = thisLength;
-            currentIdx++;
         }
     }
+    lengthBucket.resize(count);
 }
 //
 void SimilarSentences::writeToFileLengthBucket()
