@@ -12,13 +12,20 @@
 int main(int argc, const char * argv[])
 {
     // insert code here...
-    string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences500.txt";
+    string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences50000.txt";
     
     SimilarSentences simSent(filename);
     simSent.findAndProcessDuplicates();
-    simSent.writeToFileNoDupliData();
     simSent.hashToLengthBuckets();
-    simSent.writeToFileLengthBucket();
+    simSent.debugInfo(simSent.lengthBucket);
+
+
+    simSent.hashToEditDistBuckets();
+    simSent.debugInfo(simSent.eDistBucket);
+    simSent.writeToFileEditDistBucket();
+
+    simSent.bruteForce();
+    simSent.writeToFilePairBucket();
     
     return 0;
 }

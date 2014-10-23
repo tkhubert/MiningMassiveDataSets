@@ -15,25 +15,38 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
+#include <numeric>
+#include <functional>
 
 using namespace std;
 
+const int NB_FREQ_WORDS     = 5;
+const int SIZE_OF_FREQ_WORD = 10;
+//
 class Sentence
 {
 public:
-    Sentence(string s, int c=1) : sentence(s), count(c) {}
+    Sentence(string s, int c=1);
     
-    string getSentence() const {return sentence;}
-    int    getCount()    const {return count;}
-    size_t getLength()   const {return sentence.length();}
-    string toString()    const;
+    string getStr   () const {return str;}
+    int    getCount () const {return count;}
+    int    getLength() const {return length;}
+    int    getFreq  () const {return freq;}
+    string toString () const;
     
-    void   setCount(int newCount) {count = newCount;}
-    
+    int    getEDist  (int i) const {return editDist[i];}
+    int    editDistTo(const Sentence& s) const;
+
+    void   setFreq    (int f)            {freq = f;}
+    void   setEditDist(int i, int eDist) {editDist[i] = eDist;}
     
 private:
-    string sentence;
+    string str;
     int    count;
+    int    length;
+    int    freq;
+    
+    vector<int> editDist;
 };
 typedef vector<Sentence> SentenceBucket;
 //
@@ -44,16 +57,29 @@ public:
     
     void writeToFileNoDupliData();
     void writeToFileLengthBucket();
+    void writeToFileEditDistBucket();
+    void debugInfo(const vector<SentenceBucket>& input) const;
+    void writeToFilePairBucket();
     
     void findAndProcessDuplicates();
-    void hashToLengthBuckets();
     
-private:
+    template<typename FuncType>
+    void generateBuckets(vector<SentenceBucket>& input, vector<SentenceBucket>& output, const FuncType& f) const;
+
+    
+    vector<string> findMostFrequentSentence(const SentenceBucket& input) const;
+    
+    void hashToLengthBuckets();
+    void hashToEditDistBuckets();
+    void bruteForce();
+    
     string                 filename;
+    size_t                 noDupliDataSize;
     vector<string>         wholeData;
     SentenceBucket         noDupliData;
     vector<SentenceBucket> lengthBucket;
-    
+    vector<SentenceBucket> eDistBucket;
+    vector<SentenceBucket> pairBucket;
 };
 
 #endif /* defined(__MiningMassiveDataSetsC__SimilarSentences__) */
