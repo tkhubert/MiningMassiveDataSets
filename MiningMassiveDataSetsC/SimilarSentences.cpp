@@ -11,16 +11,6 @@
 
 namespace
 {
-    bool stringCompare(const Sentence& s1, const Sentence& s2)
-    {
-        return s1.getStr() < s2.getStr();
-    }
-    //
-    bool freqCompare(const Sentence& s1, const Sentence& s2)
-    {
-        return s1.getFreq() > s2.getFreq();
-    }
-    //
     template<typename FuncType>
     struct FuncCompare
     {
@@ -38,25 +28,28 @@ namespace
     {
         int operator()(const Sentence& s1) const {return s1.getLength();}
     };
-    //
-    struct FuncEditDist
-    {
-        int i;
-        
-        FuncEditDist(int idx) : i(idx) {}
-        
-        int operator()(const Sentence& s1) const {return s1.getEDist(i);}
-    };
 }
 //
 Sentence::Sentence(string s, int c)
     : str(s), count(c)
 {
-    freq     = 0;
-    editDist.resize(NB_FREQ_WORDS);
-    
     stringstream stream(str);
-    length =  int(distance(istream_iterator<string>(stream), istream_iterator<string>()));
+    vector<string> vec{istream_iterator<string>(stream), istream_iterator<string>()};
+    length =  int(vec.size());
+    
+    hash<string> hashFunc;
+    string half1, half2;
+    
+    if (length<10)
+        throw "Problem";
+    
+    for (int i=0; i<NB_WORDS; ++i)
+        half1 += vec[i] + " ";
+    for (int i=length-NB_WORDS; i<length; ++i)
+        half2 += vec[i] + " ";
+    
+    hash1 = hashFunc(half1) % NB_BUCKETS;
+    hash2 = hashFunc(half2) % NB_BUCKETS;
 }
 //
 string Sentence::toString() const
@@ -64,6 +57,54 @@ string Sentence::toString() const
     stringstream ss;
     ss << str << " " << count;
     return ss.str();
+}
+//
+bool Sentence::isEditDistInf1(const Sentence& s) const
+{
+    const Sentence& sent1 = (s.getLength()< getLength()) ? s : *this;
+    const Sentence& sent2 = (s.getLength()< getLength()) ? *this : s;
+    size_t n1 = sent1.getLength();
+    size_t n2 = sent2.getLength();
+    
+    if (n2-n1>1)
+        return false;
+    
+    stringstream ss1(sent1.getStr());
+    stringstream ss2(sent2.getStr());
+    
+    int nbEdit = 0;
+    if (n1==n2)
+    {
+        for (int i=0; i<n1; ++i)
+        {
+            string s1, s2;
+            ss1 >> s1;
+            ss2 >> s2;
+            
+            if (s1!=s2)
+                nbEdit++;
+        }
+        
+        return nbEdit<=1;
+    }
+    else if (n1+1==n2)
+    {
+        for (int i=0; i<n1; ++i)
+        {
+            string s1, s2;
+            ss1 >> s1;
+            ss2 >> s2;
+            
+            if (s1!=s2)
+            {
+                ss2 >> s2;
+                nbEdit++;
+            }
+        }
+        return nbEdit<=1;
+    }
+    else
+        return false;
 }
 //
 int Sentence::editDistTo(const Sentence& s) const
@@ -146,222 +187,102 @@ void SimilarSentences::findAndProcessDuplicates()
     wholeData.clear();
 }
 //
-void SimilarSentences::writeToFileNoDupliData()
+void SimilarSentences::hashToLengthBuckets()
 {
-    ofstream file(filename+"noDupli.txt");
-    int i=0;
-    for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
-        file << i++ << " " <<itr->toString() << endl;
+    FuncLength f;
     
-    file.close();
-    cout << "noDupliSize: " << noDupliData.size() << endl;
-}
-//
-template<typename FuncType>
-void SimilarSentences::generateBuckets(vector<SentenceBucket>& input, vector<SentenceBucket>& output, const FuncType& f) const
-{
     int    bucketCount = 0;
     int    currentIdx  = 0;
     
-    output.resize(noDupliDataSize);
+    lengthBucket.resize(noDupliDataSize);
+
+    sort(noDupliData.begin(), noDupliData.end(), FuncCompare<FuncLength>(f));
     
-    for (vector<SentenceBucket>::iterator bucket=input.begin(); bucket!=input.end(); ++bucket)
+    int currentVal = f(noDupliData[0]);
+    SentenceBucket   tmpBucket;
+    for (SentenceBucket::iterator sentence=noDupliData.begin(); sentence!=noDupliData.end(); ++sentence)
     {
-        sort(bucket->begin(), bucket->end(), FuncCompare<FuncType>(f));
+        SentenceBucket& currentBucket = lengthBucket[currentIdx];
         
-        int currentVal = f((*bucket)[0]);
-        SentenceBucket   tmpBucket;
-        for (SentenceBucket::iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
+        int thisVal = f(*sentence);
+        
+        if (thisVal!=currentVal)
         {
-            SentenceBucket& currentBucket = output[currentIdx];
-            
-            int thisVal = f(*sentence);
-            
-            if (thisVal!=currentVal)
+            if (currentBucket.size()+tmpBucket.size()>1)
             {
-                if (currentBucket.size()+tmpBucket.size()>1)
-                {
-                    currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
-                    currentIdx++;
-                    bucketCount++;
-                }
-                if (thisVal==currentVal+1)
-                {
-                    if (currentIdx>output.size())
-                        output.resize(output.size()*2);
-                    SentenceBucket& nextBucket = output[currentIdx];
-                    nextBucket.insert(nextBucket.end(), tmpBucket.begin(), tmpBucket.end());
-                }
-                
-                tmpBucket.clear();
-                currentVal = thisVal;
+                currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
+                currentIdx++;
+                bucketCount++;
             }
-            tmpBucket.push_back(*sentence);
+            if (thisVal==currentVal+1)
+            {
+                SentenceBucket& nextBucket = lengthBucket[currentIdx];
+                nextBucket.insert(nextBucket.end(), tmpBucket.begin(), tmpBucket.end());
+            }
+            
+            tmpBucket.clear();
+            currentVal = thisVal;
         }
-        
-        if (tmpBucket.size()>1)
-        {
-            SentenceBucket& currentBucket = output[currentIdx];
-            currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
-            currentIdx++;
-            bucketCount++;
-        }
+        tmpBucket.push_back(*sentence);
     }
-    output.resize(bucketCount);
-}
-//
-void SimilarSentences::hashToLengthBuckets()
-{
-    FuncLength FLength;
     
-    vector<SentenceBucket> noDupliDataV(1);
-    noDupliDataV[0] = noDupliData;
-    
-    generateBuckets<FuncLength>(noDupliDataV, lengthBucket, FLength);
+    if (tmpBucket.size()>1)
+    {
+        SentenceBucket& currentBucket = lengthBucket[currentIdx];
+        currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
+        currentIdx++;
+        bucketCount++;
+    }
+
+    lengthBucket.resize(bucketCount);
     noDupliData.clear();
 }
 //
-void SimilarSentences::writeToFileLengthBucket()
+void SimilarSentences::hashToBuckets()
 {
-    int count=0;
-    ofstream file(filename+"LengthBucket.txt");
-    
-    for (vector<SentenceBucket>::const_iterator itr=lengthBucket.begin(); itr!=lengthBucket.end(); ++itr)
+    for (vector<SentenceBucket>::const_iterator bucket=lengthBucket.begin(); bucket!=lengthBucket.end(); ++bucket)
     {
-        count+=itr->size();
-        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
-            file << itr2->getLength() << " " << itr2->toString() << endl;
-        file <<endl;
+        vector<SentenceBucket> hashTable1;
+        vector<SentenceBucket> hashTable2;
+        hashTable1.resize(NB_BUCKETS);
+        hashTable2.resize(NB_BUCKETS);
+        
+        for (SentenceBucket::const_iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
+        {
+            int hash1 = sentence->getHash1();
+            int hash2 = sentence->getHash2();
+            
+            hashTable1[hash1].push_back(*sentence);
+            hashTable2[hash2].push_back(*sentence);
+        }
+        
+        for (int i=0; i<NB_BUCKETS; ++i)
+        {
+            const SentenceBucket& set1 = hashTable1[i];
+            const SentenceBucket& set2 = hashTable2[i];
+            
+            bruteForce(set1);
+            bruteForce(set2);
+        }
     }
-    
-    file.close();
 }
 //
-vector<string> SimilarSentences::findMostFrequentSentence(const SentenceBucket& input) const
+void SimilarSentences::bruteForce(const SentenceBucket& bucket)
 {
-    int bucketSize  = int(input.size());
-    int length      = min(SIZE_OF_FREQ_WORD, input[0].getLength());
+    size_t bucketSize = bucket.size();
     
-    vector<SentenceBucket> data    (length);
-    vector<SentenceBucket> freqData(length);
-    
-    for (int i=0; i<length; ++i)
-        data[i].reserve(bucketSize);
-    
-    for (SentenceBucket::const_iterator sentence=input.begin(); sentence!=input.end(); ++sentence)
+    for (int i=0; i<bucketSize; ++i)
     {
-        stringstream ss(sentence->getStr());
-        for (int i=0; i<length; ++i)
+        const Sentence& s1=bucket[i];
+        
+        for (int j=i+1; j<bucketSize; ++j)
         {
-            string word;
-            ss >> word;
-            data[i].push_back(word);
+            const Sentence& s2=bucket[j];
+            
+            if (s1.isEditDistInf1(s2))
+                pairBucket.insert(SentencePair(s1,s2));
         }
     }
-    
-    int idx=0;
-    for (vector<SentenceBucket>::iterator bucket=data.begin(); bucket!=data.end(); ++bucket)
-    {
-        sort(bucket->begin(), bucket->end(), stringCompare);
-
-        SentenceBucket sentenceCount;
-        
-        int    currentCount = 0;
-        string currentWord  = bucket->begin()->getStr();
-        for (SentenceBucket::iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
-        {
-            if (sentence->getStr()!=currentWord)
-            {
-                sentenceCount.push_back(Sentence(currentWord));
-                sentenceCount.back().setFreq(currentCount);
-
-                currentCount = 0;
-                currentWord  = sentence->getStr();
-            }
-            currentCount++;
-        }
-        
-        sort(sentenceCount.begin(), sentenceCount.end(), freqCompare);
-        
-        SentenceBucket tmpBucket;
-        tmpBucket.insert(tmpBucket.end(), sentenceCount.begin(), sentenceCount.begin() + min(NB_FREQ_WORDS, int(sentenceCount.size())));
-        freqData[idx]=tmpBucket;
-        idx++;
-    }
-    
-    vector<string> freqSentences(NB_FREQ_WORDS);
-    for (int i=0; i<length; ++i)
-    {
-        const SentenceBucket& currentBucket = freqData[i];
-        for (int j=0; j<currentBucket.size(); ++j)
-            freqSentences[j] += currentBucket[j].getStr() + " ";
-    }
-    return freqSentences;
-}
-//
-void SimilarSentences::hashToEditDistBuckets()
-{
-    vector<SentenceBucket> newInput;
-    newInput.insert(newInput.begin(), lengthBucket.begin(), lengthBucket.end());
-    
-    eDistBucket.clear();
-    eDistBucket.resize(noDupliDataSize);
-    
-    
-    for (vector<SentenceBucket>::iterator bucket=newInput.begin(); bucket!=newInput.end(); ++bucket)
-    {
-        vector<string> freqStrings = findMostFrequentSentence(*bucket);
-        SentenceBucket freqSentences;
-        for (int i=0; i<freqStrings.size(); ++i)
-            freqSentences.push_back(Sentence(freqStrings[i]));
-        
-        int freqSentencesSize = freqSentences.size();
-        
-        for (SentenceBucket::iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
-        {
-            for (int i=0; i<freqSentencesSize; ++i)
-            {
-                const Sentence& pivot = freqSentences[i];
-                int editDist = sentence->editDistTo(pivot);
-                sentence->setEditDist(i, editDist);
-            }
-        }
-    }
-    
-    vector<SentenceBucket>& input = newInput;
-    vector<SentenceBucket>  output;
-    for (int i=0; i<NB_FREQ_WORDS; ++i)
-    {
-        FuncEditDist FEditDist(i);
-        
-        output.clear();
-        generateBuckets<FuncEditDist>(input, output, FEditDist);
-        debugInfo(output);
-        input = output;
-    }
-
-    eDistBucket.insert(eDistBucket.end(), output.begin(), output.end());
-}
-//
-void SimilarSentences::writeToFileEditDistBucket()
-{
-    int count=0;
-    ofstream file(filename+"EditDist.txt");
-    
-    for (vector<SentenceBucket>::const_iterator itr=eDistBucket.begin(); itr!=eDistBucket.end(); ++itr)
-    {
-        count+=itr->size();
-        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
-        {
-            for (int i=0; i<NB_FREQ_WORDS; ++i)
-                file << itr2->getEDist(i) << " ";
-            file << itr2->getLength() << " " << itr2->toString() << endl;
-        }
-        file <<endl;
-    }
-    
-    file.close();
-    cout << "EditDistBucketSize: " << count << endl;
 }
 //
 void SimilarSentences::debugInfo(const vector<SentenceBucket>& input) const
@@ -384,31 +305,31 @@ void SimilarSentences::debugInfo(const vector<SentenceBucket>& input) const
     cout << endl;
 }
 //
-void SimilarSentences::bruteForce()
+void SimilarSentences::writeToFileNoDupliData()
 {
-    SentenceBucket tmpBucket;
-    for (vector<SentenceBucket>::const_iterator itr=eDistBucket.begin(); itr!=eDistBucket.end(); ++itr)
+    ofstream file(filename+"noDupli.txt");
+    int i=0;
+    for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
+        file << i++ << " " <<itr->toString() << endl;
+    
+    file.close();
+    cout << "noDupliSize: " << noDupliData.size() << endl;
+}
+//
+void SimilarSentences::writeToFileLengthBucket()
+{
+    int count=0;
+    ofstream file(filename+"LengthBucket.txt");
+    
+    for (vector<SentenceBucket>::const_iterator itr=lengthBucket.begin(); itr!=lengthBucket.end(); ++itr)
     {
-        size_t n = itr->size();
-        for (int i=0; i<n; ++i)
-        {
-            const Sentence& si = (*itr)[i];
-            
-            for (int j=i+1; j<n; ++j)
-            {
-                const Sentence& sj = (*itr)[j];
-                int   editDist = si.editDistTo(sj);
-                
-                if (editDist<=1)
-                {
-                    tmpBucket.push_back(si);
-                    tmpBucket.push_back(sj);
-                    pairBucket.push_back(tmpBucket);
-                    tmpBucket.clear();
-                }
-            }
-        }
+        count+=itr->size();
+        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
+            file << itr2->getLength() << " " << itr2->toString() << endl;
+        file <<endl;
     }
+    
+    file.close();
 }
 //
 void SimilarSentences::writeToFilePairBucket()
@@ -416,11 +337,11 @@ void SimilarSentences::writeToFilePairBucket()
     int count=0;
     ofstream file(filename+"PairBucket.txt");
     
-    for (vector<SentenceBucket>::const_iterator itr=pairBucket.begin(); itr!=pairBucket.end(); ++itr)
+    for (set<SentencePair>::const_iterator pair=pairBucket.begin(); pair!=pairBucket.end(); ++pair)
     {
-        count+=itr->size();
-        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
-            file <<  itr2->toString() << endl;
+        count+=2;
+        file <<  pair->first().toString() << endl;
+        file <<  pair->second().toString() << endl;
         file <<endl;
     }
     

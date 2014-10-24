@@ -14,14 +14,16 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <numeric>
 #include <functional>
+#include <cmath>
 
 using namespace std;
 
-const int NB_FREQ_WORDS     = 5;
-const int SIZE_OF_FREQ_WORD = 10;
+const int NB_WORDS   = 5;
+const int NB_BUCKETS = 1000;
 //
 class Sentence
 {
@@ -31,23 +33,37 @@ public:
     string getStr   () const {return str;}
     int    getCount () const {return count;}
     int    getLength() const {return length;}
-    int    getFreq  () const {return freq;}
+    int    getHash1 () const {return hash1;}
+    int    getHash2 () const {return hash2;}
     string toString () const;
-    
-    int    getEDist  (int i) const {return editDist[i];}
-    int    editDistTo(const Sentence& s) const;
 
-    void   setFreq    (int f)            {freq = f;}
-    void   setEditDist(int i, int eDist) {editDist[i] = eDist;}
+    bool   isEditDistInf1(const Sentence& s) const;
+    int    editDistTo(const Sentence& s) const;
+    
+    bool operator< (const Sentence& s) const {return str < s.getStr(); }
     
 private:
     string str;
     int    count;
     int    length;
-    int    freq;
-    
-    vector<int> editDist;
+    int    hash1;
+    int    hash2;
 };
+//
+class SentencePair
+{
+public:
+    SentencePair(Sentence s1, Sentence s2) : sPair(make_pair(s1,s2)) {}
+    
+    pair<Sentence, Sentence> sPair;
+    
+    const Sentence& first()  const {return sPair.first;}
+    const Sentence& second() const {return sPair.second;}
+    
+    bool operator< (const SentencePair& sP) const { return sPair.first < sP.first();}
+    
+};
+//
 typedef vector<Sentence> SentenceBucket;
 //
 class SimilarSentences
@@ -62,24 +78,21 @@ public:
     void writeToFilePairBucket();
     
     void findAndProcessDuplicates();
+    void hashToBuckets();
     
     template<typename FuncType>
     void generateBuckets(vector<SentenceBucket>& input, vector<SentenceBucket>& output, const FuncType& f) const;
-
-    
-    vector<string> findMostFrequentSentence(const SentenceBucket& input) const;
     
     void hashToLengthBuckets();
-    void hashToEditDistBuckets();
-    void bruteForce();
+    void bruteForce(const SentenceBucket& bucket);
+
     
     string                 filename;
     size_t                 noDupliDataSize;
     vector<string>         wholeData;
     SentenceBucket         noDupliData;
     vector<SentenceBucket> lengthBucket;
-    vector<SentenceBucket> eDistBucket;
-    vector<SentenceBucket> pairBucket;
+    set<SentencePair>      pairBucket;
 };
 
 #endif /* defined(__MiningMassiveDataSetsC__SimilarSentences__) */

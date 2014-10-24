@@ -18,13 +18,7 @@ int main(int argc, const char * argv[])
     simSent.findAndProcessDuplicates();
     simSent.hashToLengthBuckets();
     simSent.debugInfo(simSent.lengthBucket);
-
-
-    simSent.hashToEditDistBuckets();
-    simSent.debugInfo(simSent.eDistBucket);
-    simSent.writeToFileEditDistBucket();
-
-    simSent.bruteForce();
+    simSent.hashToBuckets();
     simSent.writeToFilePairBucket();
     
     return 0;
