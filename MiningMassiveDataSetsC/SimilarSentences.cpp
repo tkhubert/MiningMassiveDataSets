@@ -282,7 +282,6 @@ void SimilarSentences::hashToStringBuckets()
         hashTable1.resize(NB_BUCKETS);
         hashTable2.resize(NB_BUCKETS);
         
-        int hashTableIdx = 0;
         for (SentenceBucket::const_iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
         {
             int hash1 = sentence->getHash1();
