@@ -21,7 +21,7 @@
 using namespace std;
 
 const int NB_WORDS   = 5;
-const int NB_BUCKETS = 1000000;
+const int NB_BUCKETS = 100000;
 //
 class Sentence
 {
