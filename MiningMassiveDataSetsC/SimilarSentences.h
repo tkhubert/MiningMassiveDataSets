@@ -21,7 +21,7 @@
 using namespace std;
 
 const int NB_WORDS   = 5;
-const int NB_BUCKETS = 1000;
+const int NB_BUCKETS = 1000000;
 //
 class Sentence
 {
@@ -62,7 +62,8 @@ public:
     int             getCount() const {return count;}
     string          toString() const;
     
-    bool operator< (const SentencePair& sP) const { return sPair.first < sP.first();}
+    bool operator< (const SentencePair& sP) const;
+    bool operator==(const SentencePair& sP) const;
     
 private:
     // members
@@ -91,11 +92,7 @@ private:
     set<SentencePair>      pairBucket;
     
     // member functions
-    void writeToFileNoDupliData();
-    void writeToFileLengthBucket();
-    void writeToFileEditDistBucket();
-    void debugInfo(const vector<SentenceBucket>& input) const;
-    void writeToFilePairBucket();
+    void writeToFilePairBucket() const;
     
     void findAndProcessDuplicates();
     void hashToLengthBuckets();

@@ -87,7 +87,7 @@ bool Sentence::isEditDistInf1(const Sentence& s) const
         {
             if (sent1.strVec[i]!=sent2.strVec[j])
             {
-                j++;
+                i--;
                 nbEdit++;
             }
             if (nbEdit>1)
@@ -141,6 +141,21 @@ SentencePair::SentencePair(Sentence s1, Sentence s2) : sPair(make_pair(s1,s2))
         count = s1Count*s2Count;
 }
 //
+bool SentencePair::operator< (const SentencePair& sP) const
+{
+    if (sPair.first < sP.first())
+        return true;
+    else if (sPair.first == sP.first())
+        return sPair.second < sP.second();
+    else
+        return false;
+}
+//
+bool SentencePair::operator==(const SentencePair& sP) const
+{
+    return (sPair.first==sP.first() && sPair.second==sP.second());
+}
+//
 string SentencePair::toString() const
 {
     stringstream ss;
@@ -185,7 +200,7 @@ void SimilarSentences::findSmilarSentences()
     hashToLengthBuckets();
     hashToStringBuckets();
     countSimilarSentences();
-    //writeToFilePairBucket();
+    
 }
 //
 void SimilarSentences::findAndProcessDuplicates()
@@ -198,11 +213,18 @@ void SimilarSentences::findAndProcessDuplicates()
     int    currentCount  = 0;
     
     noDupliDataSize = 0;
-    for (vector<string>::const_iterator str=wholeData.begin(); str!=wholeData.end(); ++str)
+    
+    vector<string>::const_iterator begin = wholeData.begin();
+    vector<string>::const_iterator end   = wholeData.end();
+    
+    for (vector<string>::const_iterator str=begin; str!=end; ++str)
     {
-        if (*str==currentString)
+        bool sameStr=(*str==currentString);
+        
+        if (sameStr)
             currentCount++;
-        else
+        
+        if (!sameStr)
         {
             Sentence sent = Sentence(currentString, currentCount);
             noDupliData[noDupliDataSize++] = sent;
@@ -215,8 +237,14 @@ void SimilarSentences::findAndProcessDuplicates()
         }
     }
     
+    Sentence sent = Sentence(currentString, currentCount);
+    noDupliData[noDupliDataSize++] = sent;
+    
+    if (currentCount>1)
+        pairBucket.insert(SentencePair(sent, sent));
+    
     noDupliData.resize(noDupliDataSize);
-    wholeData.clear();
+    //wholeData.clear();
 }
 //
 void SimilarSentences::hashToLengthBuckets()
@@ -235,7 +263,10 @@ void SimilarSentences::hashToLengthBuckets()
     SentenceBucket tmpBucket(noDupliDataSize);
     int            tmpBucketIdx=0;
     
-    for (SentenceBucket::iterator sentence=noDupliData.begin(); sentence!=noDupliData.end(); ++sentence)
+    SentenceBucket::iterator begin = noDupliData.begin();
+    SentenceBucket::iterator end   = noDupliData.end();
+    
+    for (SentenceBucket::iterator sentence=begin; sentence!=end; ++sentence)
     {
         SentenceBucket& currentBucket = lengthBucket[currentIdx];
         
@@ -261,13 +292,12 @@ void SimilarSentences::hashToLengthBuckets()
         tmpBucket[tmpBucketIdx++] = *sentence;
     }
     
-    if (tmpBucketIdx>1)
-    {
-        SentenceBucket& currentBucket = lengthBucket[currentIdx];
-        currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.begin()+tmpBucketIdx);
-        currentIdx++;
-        bucketCount++;
-    }
+
+    SentenceBucket& currentBucket = lengthBucket[currentIdx];
+    currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.begin()+tmpBucketIdx);
+    currentIdx++;
+    bucketCount++;
+
 
     lengthBucket.resize(bucketCount);
     noDupliData.clear();
@@ -330,54 +360,7 @@ void SimilarSentences::countSimilarSentences()
     cout << "nbSentences at 1 or 0 edit dist: " << finalCount << endl;
 }
 //
-void SimilarSentences::debugInfo(const vector<SentenceBucket>& input) const
-{
-    size_t nbBuckets = input.size();
-    vector<size_t> bucketsSize(nbBuckets);
-    
-    int i=0;
-    for (vector<SentenceBucket>::const_iterator bucket=input.begin(); bucket!=input.end(); ++bucket)
-    {
-        bucketsSize[i] = bucket->size();
-        i++;
-    }
-    int totalElements = accumulate(bucketsSize.begin(), bucketsSize.end(), 0.);
-    cout << "nbBuckets: "<<nbBuckets << endl;
-    cout << "nbElements: "<< totalElements << endl;
-    cout << "Buckets max:"<< *max_element(bucketsSize.begin(), bucketsSize.end())<< endl;
-    cout << "Buckets min:"<< *min_element(bucketsSize.begin(), bucketsSize.end())<< endl;
-    cout << "Buckets avg:"<< totalElements/nbBuckets<< endl;
-    cout << endl;
-}
-//
-void SimilarSentences::writeToFileNoDupliData()
-{
-    ofstream file(filename+"noDupli.txt");
-    int i=0;
-    for (SentenceBucket::const_iterator itr=noDupliData.begin(); itr!=noDupliData.end(); ++itr)
-        file << i++ << " " <<itr->toString() << endl;
-    
-    file.close();
-    cout << "noDupliSize: " << noDupliData.size() << endl;
-}
-//
-void SimilarSentences::writeToFileLengthBucket()
-{
-    int count=0;
-    ofstream file(filename+"LengthBucket.txt");
-    
-    for (vector<SentenceBucket>::const_iterator itr=lengthBucket.begin(); itr!=lengthBucket.end(); ++itr)
-    {
-        count+=itr->size();
-        for(SentenceBucket::const_iterator itr2=itr->begin(); itr2!=itr->end(); ++itr2)
-            file << itr2->getLength() << " " << itr2->toString() << endl;
-        file <<endl;
-    }
-    
-    file.close();
-}
-//
-void SimilarSentences::writeToFilePairBucket()
+void SimilarSentences::writeToFilePairBucket() const
 {
     int count=0;
     ofstream file(filename+"PairBucket.txt");

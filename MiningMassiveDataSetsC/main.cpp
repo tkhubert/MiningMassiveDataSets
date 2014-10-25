@@ -14,13 +14,15 @@ int main(int argc, const char * argv[])
     clock_t t = clock();
     
     // insert code here...
-    string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences.txt";
+    string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences100000.txt";
     
     SimilarSentences simSent(filename);
     simSent.findSmilarSentences();
     
     t = clock() - t;
     cout << "time to compute: "<< float(t)/CLOCKS_PER_SEC << endl;
+    
+    //cout << "The right answer is 429493953, so you are close. If you are using bands, try changing the size of them";
     
     return 0;
 }
