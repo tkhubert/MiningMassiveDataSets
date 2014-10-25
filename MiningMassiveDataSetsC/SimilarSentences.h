@@ -17,8 +17,6 @@
 #include <set>
 #include <algorithm>
 #include <numeric>
-#include <functional>
-#include <cmath>
 
 using namespace std;
 
@@ -28,6 +26,7 @@ const int NB_BUCKETS = 1000;
 class Sentence
 {
 public:
+    Sentence() {}
     Sentence(string s, int c=1);
     
     string getStr   () const {return str;}
@@ -45,11 +44,12 @@ public:
     
 private:
     // members
-    string str;
-    int    count;
-    int    length;
-    int    hash1;
-    int    hash2;
+    string         str;
+    vector<string> strVec;
+    int            count;
+    int            length;
+    int            hash1;
+    int            hash2;
 };
 //
 class SentencePair

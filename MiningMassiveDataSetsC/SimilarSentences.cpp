@@ -34,8 +34,8 @@ Sentence::Sentence(string s, int c)
     : str(s), count(c)
 {
     stringstream stream(str);
-    vector<string> vec{istream_iterator<string>(stream), istream_iterator<string>()};
-    length =  int(vec.size());
+    strVec.insert(strVec.begin(), istream_iterator<string>(stream), istream_iterator<string>());
+    length =  int(strVec.size());
     
     hash<string> hashFunc;
     string half1, half2;
@@ -44,9 +44,9 @@ Sentence::Sentence(string s, int c)
         throw "Problem";
     
     for (int i=0; i<NB_WORDS; ++i)
-        half1 += vec[i] + " ";
+        half1 += strVec[i] + " ";
     for (int i=length-NB_WORDS; i<length; ++i)
-        half2 += vec[i] + " ";
+        half2 += strVec[i] + " ";
     
     hash1 = hashFunc(half1) % NB_BUCKETS;
     hash2 = hashFunc(half2) % NB_BUCKETS;
@@ -69,42 +69,34 @@ bool Sentence::isEditDistInf1(const Sentence& s) const
     if (n2-n1>1)
         return false;
     
-    stringstream ss1(sent1.getStr());
-    stringstream ss2(sent2.getStr());
-    
     int nbEdit = 0;
     if (n1==n2)
     {
         for (int i=0; i<n1; ++i)
         {
-            string s1, s2;
-            ss1 >> s1;
-            ss2 >> s2;
-            
-            if (s1!=s2)
+            if (sent1.strVec[i]!=sent2.strVec[i])
                 nbEdit++;
+            if (nbEdit>1)
+                return false;
         }
-        
-        return nbEdit<=1;
-    }
-    else if (n1+1==n2)
-    {
-        for (int i=0; i<n1; ++i)
-        {
-            string s1, s2;
-            ss1 >> s1;
-            ss2 >> s2;
-            
-            if (s1!=s2)
-            {
-                ss2 >> s2;
-                nbEdit++;
-            }
-        }
-        return nbEdit<=1;
     }
     else
-        return false;
+    {
+        int j=0;
+        for (int i=0; i<n1; ++i)
+        {
+            if (sent1.strVec[i]!=sent2.strVec[j])
+            {
+                j++;
+                nbEdit++;
+            }
+            if (nbEdit>1)
+                return false;
+            j++;
+        }
+    }
+    
+    return true;
 }
 //
 int Sentence::editDistTo(const Sentence& s) const
@@ -198,11 +190,14 @@ void SimilarSentences::findSmilarSentences()
 //
 void SimilarSentences::findAndProcessDuplicates()
 {
+    noDupliData.resize(wholeData.size());
+    
     sort(wholeData.begin(), wholeData.end());
     
     string currentString = wholeData[0];
     int    currentCount  = 0;
     
+    noDupliDataSize = 0;
     for (vector<string>::const_iterator str=wholeData.begin(); str!=wholeData.end(); ++str)
     {
         if (*str==currentString)
@@ -210,8 +205,8 @@ void SimilarSentences::findAndProcessDuplicates()
         else
         {
             Sentence sent = Sentence(currentString, currentCount);
-            noDupliData.push_back(sent);
-            
+            noDupliData[noDupliDataSize++] = sent;
+
             if (currentCount>1)
                 pairBucket.insert(SentencePair(sent, sent));
             
@@ -220,7 +215,7 @@ void SimilarSentences::findAndProcessDuplicates()
         }
     }
     
-    noDupliDataSize = noDupliData.size();
+    noDupliData.resize(noDupliDataSize);
     wholeData.clear();
 }
 //
@@ -236,7 +231,10 @@ void SimilarSentences::hashToLengthBuckets()
     sort(noDupliData.begin(), noDupliData.end(), FuncCompare<FuncLength>(f));
     
     int currentVal = f(noDupliData[0]);
-    SentenceBucket   tmpBucket;
+    
+    SentenceBucket tmpBucket(noDupliDataSize);
+    int            tmpBucketIdx=0;
+    
     for (SentenceBucket::iterator sentence=noDupliData.begin(); sentence!=noDupliData.end(); ++sentence)
     {
         SentenceBucket& currentBucket = lengthBucket[currentIdx];
@@ -247,26 +245,26 @@ void SimilarSentences::hashToLengthBuckets()
         {
             if (currentBucket.size()+tmpBucket.size()>1)
             {
-                currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
+                currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.begin()+tmpBucketIdx);
                 currentIdx++;
                 bucketCount++;
             }
             if (thisVal==currentVal+1)
             {
                 SentenceBucket& nextBucket = lengthBucket[currentIdx];
-                nextBucket.insert(nextBucket.end(), tmpBucket.begin(), tmpBucket.end());
+                nextBucket.insert(nextBucket.end(), tmpBucket.begin(), tmpBucket.begin()+tmpBucketIdx);
             }
             
-            tmpBucket.clear();
-            currentVal = thisVal;
+            tmpBucketIdx = 0;
+            currentVal   = thisVal;
         }
-        tmpBucket.push_back(*sentence);
+        tmpBucket[tmpBucketIdx++] = *sentence;
     }
     
-    if (tmpBucket.size()>1)
+    if (tmpBucketIdx>1)
     {
         SentenceBucket& currentBucket = lengthBucket[currentIdx];
-        currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.end());
+        currentBucket.insert(currentBucket.end(), tmpBucket.begin(), tmpBucket.begin()+tmpBucketIdx);
         currentIdx++;
         bucketCount++;
     }
@@ -284,6 +282,7 @@ void SimilarSentences::hashToStringBuckets()
         hashTable1.resize(NB_BUCKETS);
         hashTable2.resize(NB_BUCKETS);
         
+        int hashTableIdx = 0;
         for (SentenceBucket::const_iterator sentence=bucket->begin(); sentence!=bucket->end(); ++sentence)
         {
             int hash1 = sentence->getHash1();
