@@ -138,6 +138,30 @@ int Sentence::editDistTo(const Sentence& s) const
     return data[n*m-1];
 }
 //
+SentencePair::SentencePair(Sentence s1, Sentence s2) : sPair(make_pair(s1,s2))
+{
+    int s1Count = s1.getCount();
+    int s2Count = s2.getCount();
+    
+    if (s1==s2)
+        count = s1Count*(s1Count-1)/2;
+    else
+        count = s1Count*s2Count;
+}
+//
+string SentencePair::toString() const
+{
+    stringstream ss;
+    if (sPair.first==sPair.second)
+        ss << sPair.first.toString() << endl;
+    else
+    {
+        ss << sPair.first.toString()  << endl;
+        ss << sPair.second.toString() << endl;
+    }
+    return ss.str();
+}
+//
 SimilarSentences::SimilarSentences(string _filename) : filename(_filename)
 {
     ifstream file(filename);
@@ -163,6 +187,15 @@ SimilarSentences::SimilarSentences(string _filename) : filename(_filename)
         throw "Could not open file: " + filename;
 }
 //
+void SimilarSentences::findSmilarSentences()
+{
+    findAndProcessDuplicates();
+    hashToLengthBuckets();
+    hashToStringBuckets();
+    countSimilarSentences();
+    //writeToFilePairBucket();
+}
+//
 void SimilarSentences::findAndProcessDuplicates()
 {
     sort(wholeData.begin(), wholeData.end());
@@ -170,16 +203,20 @@ void SimilarSentences::findAndProcessDuplicates()
     string currentString = wholeData[0];
     int    currentCount  = 0;
     
-    for (vector<string>::const_iterator itr=wholeData.begin(); itr!=wholeData.end(); ++itr)
+    for (vector<string>::const_iterator str=wholeData.begin(); str!=wholeData.end(); ++str)
     {
-        if (*itr==currentString)
+        if (*str==currentString)
             currentCount++;
         else
         {
-            noDupliData.push_back(Sentence(currentString, currentCount));
+            Sentence sent = Sentence(currentString, currentCount);
+            noDupliData.push_back(sent);
+            
+            if (currentCount>1)
+                pairBucket.insert(SentencePair(sent, sent));
             
             currentCount  = 1;
-            currentString = *itr;
+            currentString = *str;
         }
     }
     
@@ -238,7 +275,7 @@ void SimilarSentences::hashToLengthBuckets()
     noDupliData.clear();
 }
 //
-void SimilarSentences::hashToBuckets()
+void SimilarSentences::hashToStringBuckets()
 {
     for (vector<SentenceBucket>::const_iterator bucket=lengthBucket.begin(); bucket!=lengthBucket.end(); ++bucket)
     {
@@ -283,6 +320,16 @@ void SimilarSentences::bruteForce(const SentenceBucket& bucket)
                 pairBucket.insert(SentencePair(s1,s2));
         }
     }
+}
+//
+void SimilarSentences::countSimilarSentences()
+{
+    finalCount=0;
+    
+    for (set<SentencePair>::const_iterator pair=pairBucket.begin(); pair!=pairBucket.end(); ++pair)
+        finalCount+=pair->getCount();
+    
+    cout << "nbSentences at 1 or 0 edit dist: " << finalCount << endl;
 }
 //
 void SimilarSentences::debugInfo(const vector<SentenceBucket>& input) const
@@ -340,9 +387,7 @@ void SimilarSentences::writeToFilePairBucket()
     for (set<SentencePair>::const_iterator pair=pairBucket.begin(); pair!=pairBucket.end(); ++pair)
     {
         count+=2;
-        file <<  pair->first().toString() << endl;
-        file <<  pair->second().toString() << endl;
-        file <<endl;
+        file <<  pair->toString() << endl;
     }
     
     file.close();

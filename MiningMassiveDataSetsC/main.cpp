@@ -15,11 +15,7 @@ int main(int argc, const char * argv[])
     string filename = "/Users/tkhubert/Documents/Etude/5.MiningMassiveDataSets/HW/sentences50000.txt";
     
     SimilarSentences simSent(filename);
-    simSent.findAndProcessDuplicates();
-    simSent.hashToLengthBuckets();
-    simSent.debugInfo(simSent.lengthBucket);
-    simSent.hashToBuckets();
-    simSent.writeToFilePairBucket();
+    simSent.findSmilarSentences();
     
     return 0;
 }

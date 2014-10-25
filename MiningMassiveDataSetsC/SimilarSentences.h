@@ -37,12 +37,14 @@ public:
     int    getHash2 () const {return hash2;}
     string toString () const;
 
-    bool   isEditDistInf1(const Sentence& s) const;
-    int    editDistTo(const Sentence& s) const;
+    bool isEditDistInf1(const Sentence& s) const;
+    int  editDistTo    (const Sentence& s) const;
     
-    bool operator< (const Sentence& s) const {return str < s.getStr(); }
+    bool operator< (const Sentence& s) const {return str< s.getStr(); }
+    bool operator==(const Sentence& s) const {return str==s.getStr(); }
     
 private:
+    // members
     string str;
     int    count;
     int    length;
@@ -53,15 +55,19 @@ private:
 class SentencePair
 {
 public:
-    SentencePair(Sentence s1, Sentence s2) : sPair(make_pair(s1,s2)) {}
+    SentencePair(Sentence s1, Sentence s2);
     
-    pair<Sentence, Sentence> sPair;
-    
-    const Sentence& first()  const {return sPair.first;}
-    const Sentence& second() const {return sPair.second;}
+    const Sentence& first()    const {return sPair.first;}
+    const Sentence& second()   const {return sPair.second;}
+    int             getCount() const {return count;}
+    string          toString() const;
     
     bool operator< (const SentencePair& sP) const { return sPair.first < sP.first();}
     
+private:
+    // members
+    pair<Sentence, Sentence> sPair;
+    int                      count;
 };
 //
 typedef vector<Sentence> SentenceBucket;
@@ -71,6 +77,20 @@ class SimilarSentences
 public:
     SimilarSentences(string filename);
     
+    void findSmilarSentences();
+
+private:
+    // members
+    string filename;
+    size_t noDupliDataSize;
+    int    finalCount;
+    
+    vector<string>         wholeData;
+    SentenceBucket         noDupliData;
+    vector<SentenceBucket> lengthBucket;
+    set<SentencePair>      pairBucket;
+    
+    // member functions
     void writeToFileNoDupliData();
     void writeToFileLengthBucket();
     void writeToFileEditDistBucket();
@@ -78,21 +98,10 @@ public:
     void writeToFilePairBucket();
     
     void findAndProcessDuplicates();
-    void hashToBuckets();
-    
-    template<typename FuncType>
-    void generateBuckets(vector<SentenceBucket>& input, vector<SentenceBucket>& output, const FuncType& f) const;
-    
     void hashToLengthBuckets();
+    void hashToStringBuckets();
+    void countSimilarSentences();
     void bruteForce(const SentenceBucket& bucket);
-
-    
-    string                 filename;
-    size_t                 noDupliDataSize;
-    vector<string>         wholeData;
-    SentenceBucket         noDupliData;
-    vector<SentenceBucket> lengthBucket;
-    set<SentencePair>      pairBucket;
 };
 
 #endif /* defined(__MiningMassiveDataSetsC__SimilarSentences__) */
